@@ -19,7 +19,7 @@
     {{-- CSRF --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- Fav Icon -->
-    <link rel="shortcut icon" type="{{ asset('assets/images/avatar7.png') }}image/x-icon" href="#" />
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('assets/images/avatar7.png') }}" />
 </head>
 
 <body data-instant-intensity="mousedown">

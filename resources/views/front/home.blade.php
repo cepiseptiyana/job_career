@@ -58,6 +58,7 @@
                 <div class="single_catagory">
                     <a href="{{ route('jobs'). '?category='.$category->id }}">
                         <h4 class="pb-2">{{ $category->name }}</h4>
+                        <p>{{ $category->job->count() }} Available Position</p>
                     </a>
                 </div>
             </div>
