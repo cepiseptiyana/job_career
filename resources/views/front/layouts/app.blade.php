@@ -19,14 +19,14 @@
     {{-- CSRF --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- Fav Icon -->
-    <link rel="shortcut icon" type="image/x-icon" href="#" />
+    <link rel="shortcut icon" type="{{ asset('assets/images/avatar7.png') }}image/x-icon" href="#" />
 </head>
 
 <body data-instant-intensity="mousedown">
     <header>
         <nav class="navbar navbar-expand-lg navbar-light bg-white shadow py-3">
             <div class="container">
-                <a class="navbar-brand" href="/">CareerVibe</a>
+                <a class="navbar-brand" href="/">JobCareer</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -41,12 +41,12 @@
                     </ul>
 
                     @if (!Auth::check())
-                    <a class="btn btn-outline-primary me-2" href="{{ route('account.login') }}" type="submit">Login</a>
+                    <a class="btn btn-outline-success me-2" href="{{ route('account.login') }}" type="submit">Login</a>
                     @else
                     @if(Auth::user()->role == 'admin')
-                    <a class="btn btn-outline-primary me-2" href="{{ route('admin.dashboard') }}" type="submit">Admin</a>
+                    <a class="btn btn-outline-success me-2" href="{{ route('admin.dashboard') }}" type="submit">Admin</a>
                     @endif
-                    <a class="btn btn-outline-primary me-2" href="{{ route('account.profile') }}" type="submit">Account</a>
+                    <a class="btn btn-outline-info me-2" href="{{ route('account.profile') }}" type="submit">Account</a>
                     @endif
 
                     <a class="btn btn-primary" href="{{ route('account.createJob') }}" type="submit">Post a Job</a>

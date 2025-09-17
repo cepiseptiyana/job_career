@@ -2064,7 +2064,7 @@ fieldset:disabled .btn {
     border-color: #0dcaf0;
 }
 .btn-outline-info:hover {
-    color: #000;
+    color: #fff;
     background-color: #0dcaf0;
     border-color: #0dcaf0;
 }
@@ -9807,12 +9807,6 @@ p span,
 q span {
     font-size: inherit;
 }
-a {
-    color: #a8df8e;
-}
-a:hover {
-    color: #000;
-}
 .form-control,
 select {
     border: 1px solid #e7e7f1;
@@ -9841,20 +9835,6 @@ button,
     display: inline-block;
     border-radius: 5px;
 }
-button.btn-primary,
-.btn.btn-primary {
-    color: #ffffff;
-    background: #a8df8e;
-    border: 2px solid #a8df8e;
-}
-button.btn-primary:hover,
-button.btn-primary:focus,
-.btn.btn-primary:hover,
-.btn.btn-primary:focus {
-    border: 2px solid #242021;
-    background: #242021;
-    color: #ffffff;
-}
 button.btn-secondary,
 .btn.btn-secondary {
     background: #242021;
@@ -9867,19 +9847,6 @@ button.btn-secondary:focus,
     border: 2px solid #a8df8e;
     background: #a8df8e;
     color: #ffffff;
-}
-button.btn-outline-primary,
-.btn.btn-outline-primary {
-    color: #a8df8e;
-    border: 2px solid #a8df8e;
-}
-button.btn-outline-primary:hover,
-button.btn-outline-primary:focus,
-.btn.btn-outline-primary:hover,
-.btn.btn-outline-primary:focus {
-    background: transparent;
-    color: #242021;
-    border-color: #242021;
 }
 button.btn-outline-secondary,
 .btn.btn-outline-secondary {
@@ -10270,7 +10237,7 @@ footer .nav-link {
     padding: 10px 40px 10px 15px;
 }
 .section-5 .card .dropdown-menu .dropdown-item:hover {
-    background: #a8df8e;
+    background: #0a58ca;
     color: #ffffff;
 }
 .section-5 .card .dropdown-menu .dropdown-item:hover i {
@@ -10290,7 +10257,7 @@ footer .nav-link {
     color: #000;
 }
 .section-5 .account-nav ul li a:hover {
-    color: #a8df8e;
+    color: #0a58ca;
 }
 @font-face {
     font-family: "fontello";
