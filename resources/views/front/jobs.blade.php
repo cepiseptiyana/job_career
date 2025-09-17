@@ -18,7 +18,7 @@
         </div>
 
         <div class="row pt-5">
-            <div class="col-md-4 col-lg-3 sidebar mb-4">
+            <div class="col-lg-3 sidebar mb-4">
                 <form action="" name="searchForm" id="searchForm">
                     <div class="card border-0 shadow p-4">
                         <div class="mb-4">
@@ -73,18 +73,19 @@
                             </select>
                         </div>
 
-                        <button type="submit" class="btn btn-success">Search</button>
+                        <button type="submit" class="btn btn-primary">Search</button>
                         <a href="{{ route('jobs') }}" class="btn btn-danger mt-3">Reset</a>
                     </div>
                 </form>
             </div>
-            <div class="col-md-8 col-lg-9 ">
+
+            <div class="col-lg-9">
                 <div class="job_listing_area">
                     <div class="job_lists">
                         <div class="row">
                             @if($jobs->isNotEmpty())
                             @foreach ($jobs as $job)
-                            <div class="col-md-4">
+                            <div class="col-xl-6">
                                 <div class="card border-0 p-3 shadow mb-4">
                                     <div class="card-body">
                                         <h3 class="border-0 fs-5 pb-2 mb-0">{{ $job->title }}</h3>
