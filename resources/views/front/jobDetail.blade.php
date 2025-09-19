@@ -77,14 +77,14 @@
                         <!-- SAVE JOB -->
                         <div class="pt-3 text-end">
                             @if (Auth::check())
-                            <a href="#" id="saveJob" class="btn btn-info" data-id="{{ $job->id }}">Save</a>
+                            <a href="#" id="saveJob" class="btn btn-primary" data-id="{{ $job->id }}">Save</a>
                             @else
                             <a href="javascript:void(0);" class="btn btn-danger" style="cursor: not-allowed; opacity: 0.6;">Login To Save</a>
                             @endif
 
                             {{-- check user login belum --}}
                             @if (Auth::check())
-                            <a href="#" id="aplliedJob" data-id="{{ $job->id }}" class="btn btn-success">Apply</a>
+                            <a href="#" id="aplliedJob" data-id="{{ $job->id }}" class="btn btn-danger">Apply</a>
                             @else
                             <a href="javascript:void(0);" class="btn btn-danger" style="cursor: not-allowed; opacity: 0.6;">Login To Apply</a>
                             @endif
@@ -96,52 +96,52 @@
 
                 {{-- TAMPILKAN DATA PELAMAR --}}
                 @if (Auth::user())
-                    {{-- tampilkan sesaui pelamar user --}}
-                    @if(Auth::user()->id == $job->user_id)
-                        <div class="card shadow border-0 mt-4">
-                            <div class="job_details_header">
-                                <div class="single_jobs white-bg d-flex justify-content-between">
-                                    <div class="jobs_left d-flex align-items-center">
-                                        <div class="jobs_conetent">
-                                            <h4>Applicants</h4>
-                                        </div>
-                                    </div>
-        
-                                    <!-- save icon -->
-                                    <div class="jobs_right"></div>
+                {{-- tampilkan sesaui pelamar user --}}
+                @if(Auth::user()->id == $job->user_id)
+                <div class="card shadow border-0 mt-4">
+                    <div class="job_details_header">
+                        <div class="single_jobs white-bg d-flex justify-content-between">
+                            <div class="jobs_left d-flex align-items-center">
+                                <div class="jobs_conetent">
+                                    <h4>Applicants</h4>
                                 </div>
-        
                             </div>
-                            <div class="descript_wrap white-bg">
-                                <table class="table table-striped">
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Mobile</th>
-                                        <th>Applied Date</th>
-                                    </tr>
-        
-                                    @if($applications->isNotEmpty()) 
-                                        @foreach ($applications as $application )
-                                            <tr>
-                                                <td>{{ $application->user->name }}</td>
-                                                <td>{{ $application->user->email }}</td>
-                                                <td>{{ $application->user->mobile }}</td>
-                                                <td>{{ \Carbon\Carbon::parse($application->user->created_at)->format('d M, Y') }}</td>
-                                            </tr>
-                                        @endforeach
 
-                                        @else 
-                                            <tr>
-                                                <td colspan="3">Applicants Not Found. </td>
-                                            </tr>
-                                    @endif
-                                </table>
-                            </div>
+                            <!-- save icon -->
+                            <div class="jobs_right"></div>
                         </div>
-                    @endif
+
+                    </div>
+                    <div class="descript_wrap white-bg">
+                        <table class="table table-striped">
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Mobile</th>
+                                <th>Applied Date</th>
+                            </tr>
+
+                            @if($applications->isNotEmpty())
+                            @foreach ($applications as $application )
+                            <tr>
+                                <td>{{ $application->user->name }}</td>
+                                <td>{{ $application->user->email }}</td>
+                                <td>{{ $application->user->mobile }}</td>
+                                <td>{{ \Carbon\Carbon::parse($application->user->created_at)->format('d M, Y') }}</td>
+                            </tr>
+                            @endforeach
+
+                            @else
+                            <tr>
+                                <td colspan="3">Applicants Not Found. </td>
+                            </tr>
+                            @endif
+                        </table>
+                    </div>
+                </div>
                 @endif
-               
+                @endif
+
             </div>
             <div class="col-md-4">
                 <div class="card shadow border-0">
