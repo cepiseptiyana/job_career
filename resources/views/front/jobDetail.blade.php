@@ -112,7 +112,8 @@
                         </div>
 
                     </div>
-                    <div class="descript_wrap white-bg">
+                    
+                    <div class="table-responsive white-bg">
                         <table class="table table-striped">
                             <tr>
                                 <th>Name</th>
@@ -141,8 +142,8 @@
                 </div>
                 @endif
                 @endif
-
             </div>
+
             <div class="col-md-4">
                 <div class="card shadow border-0">
                     <div class="job_sumary">
