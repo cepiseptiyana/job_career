@@ -149,74 +149,126 @@ class JobsController extends Controller
     // APPLY JOB
     public function applyJob(Request $request)
     {
-        $id = $request->id;
-
-        $job = Job::where('id', $id)->first();
-
-        // jika job tidak ditemukan di db
-        if ($job == null) {
-            $message = 'Job Does Not Exist.';
-            session()->flash('error', $message);
-
-            return response()->json([
-                'status' => false,
-                'message' => $message
-            ]);
+        $job_id = $request->job_id;
+        // --- 1. Pastikan user login ---
+        if (!auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        // you can not apply on your own job
-        // jika di table jobs ada users_id yang sama maka jangan di apply
-        $employer_id = $job->user_id;
+        // --- 2. Validasi request ---
+        $request->validate([
+            'job_id' => 'required|integer|exists:jobs,id',
+            'cv'     => 'required|file|mimes:pdf,doc,docx|max:2048'
+        ]);
 
-        if ($employer_id == Auth::user()->id) {
-            $message = 'You Can Not Apply On Your Own Job.';
-            session()->flash('error', $message);
+        // --- 3. Upload file ---
+        $file = $request->file('cv');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs('cv', $filename, 'public');
 
-            return response()->json([
-                'status' => false,
-                'message' => $message
-            ]);
-        }
+        // --- 4. Ambil employer dari job ---
+        $job = Job::find($request->job_id);
+        $employer_id = $job->user_id; // contoh: employer = owner job
 
-        // you can not apply on a job twise / gaboleh apply job yang sama
-        $jobApplicationCount = JobApplication::where([
-            'user_id' => Auth::user()->id,
-            'job_id' => $id
-        ])->count();
-
-        if ($jobApplicationCount > 0) {
-            $message = 'You AlReady Applied On This Job.';
-            session()->flash('error', $message);
-
-            return response()->json([
-                'status' => false,
-                'message' => $message
-            ]);
-        }
-
+        // --- 5. Simpan ke database (manual) ---
         $application = new JobApplication();
-        $application->job_id = $id;
-        $application->user_id = Auth::user()->id;
-        $application->employer_id = $employer_id;
+        $application->job_id       = $request->job_id;
+        $application->user_id      = Auth::user()->id;
+        $application->employer_id  = $employer_id;
+        $application->cv_path      = $path;
         $application->applied_date = now();
         $application->save();
 
-        // send notification email to employer
-        $employer = User::where('id', $employer_id)->first();
-        $mailData = [
-            'employer' => $employer,
-            'user' => Auth::user(),
-            'job' => $job,
-        ];
+        // --- 6. Response sukses ---
+        return response()->json(['message' => 'Berhasil apply!']);
 
-        Mail::to($employer->email)->send(new JobNotificationEmail($mailData));
 
-        $message = 'You Have Successfully Applied Job.';
-        session()->flash('success', $message);
+        // -----------------
+        // -----------------
+        // $id = $request->id;
 
-        return response()->json([
-            'status' => true,
-            'message' => $message
-        ]);
+        // $job = Job::where('id', $id)->first();
+
+        // // jika job tidak ditemukan di db
+        // if ($job == null) {
+        //     $message = 'Job Does Not Exist.';
+        //     session()->flash('error', $message);
+
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => $message
+        //     ]);
+        // }
+
+        // // you can not apply on your own job
+        // // jika di table jobs ada users_id yang sama maka jangan di apply
+        // $employer_id = $job->user_id;
+
+        // if ($employer_id == Auth::user()->id) {
+        //     $message = 'You Can Not Apply On Your Own Job.';
+        //     session()->flash('error', $message);
+
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => $message
+        //     ]);
+        // }
+
+        // // you can not apply on a job twise / gaboleh apply job yang sama
+        // $jobApplicationCount = JobApplication::where([
+        //     'user_id' => Auth::user()->id,
+        //     'job_id' => $id
+        // ])->count();
+
+        // if ($jobApplicationCount > 0) {
+        //     $message = 'You AlReady Applied On This Job.';
+        //     session()->flash('error', $message);
+
+        //     return response()->json([
+        //         'status' => false,
+        //         'message' => $message
+        //     ]);
+        // }
+
+        // $application = new JobApplication();
+        // $application->job_id = $id;
+        // $application->user_id = Auth::user()->id;
+        // $application->employer_id = $employer_id;
+        // $application->applied_date = now();
+        // $application->save();
+
+        // // send notification email to employer
+        // $employer = User::where('id', $employer_id)->first();
+        // $mailData = [
+        //     'employer' => $employer,
+        //     'user' => Auth::user(),
+        //     'job' => $job,
+        // ];
+
+        // Mail::to($employer->email)->send(new JobNotificationEmail($mailData));
+
+        // $message = 'You Have Successfully Applied Job.';
+        // session()->flash('success', $message);
+
+        // return response()->json([
+        //     'status' => true,
+        //     'message' => $message
+        // ]);
+    }
+
+    public function downloadCV($id)
+    {
+        // Cari CV berdasarkan application id dan user login
+        $application = JobApplication::where('id', $id)
+            ->where('user_id', auth()->id()) // optional: batasi user hanya bisa download miliknya
+            ->firstOrFail();
+
+        $path = storage_path('app/public/' . $application->cv_path);
+
+        if (!file_exists($path)) {
+            abort(404, 'CV file not found.');
+        }
+
+        return response()->download($path);
     }
 }

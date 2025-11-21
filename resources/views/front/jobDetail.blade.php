@@ -74,10 +74,50 @@
                         @endif
 
                         <div class="border-bottom"></div>
+
                         <!-- SAVE JOB -->
                         <div class="pt-3 text-end">
-                            @if (Auth::check())
-                            <a href="#" id="saveJob" class="btn btn-primary" data-id="{{ $job->id }}">Save</a>
+                            <form action="" enctype="multipart/form-data" class="pt-3 text-end">
+                                {{-- SAVE BUTTON --}}
+                                @if (Auth::check())
+                                <input
+                                    id="saveJob"
+                                    type="button"
+                                    data-id="{{ $job->id }}"
+                                    value="Save"
+                                    class="btn btn-primary">
+                                @else
+                                <input
+                                    type="button"
+                                    value="Login To Save"
+                                    class="btn btn-danger"
+                                    style="cursor: not-allowed; opacity: 0.6;">
+                                @endif
+
+                                {{-- APPLY BUTTON (UPLOAD PDF) --}}
+                                @if (Auth::check())
+                                <label class="btn btn-danger ms-2">
+                                    Apply
+                                    <input
+                                        id="aplliedJob"
+                                        type="file"
+                                        data-id="{{ $job->id }}"
+                                        name="cv"
+                                        accept="application/pdf"
+                                        style="display: none;">
+                                </label>
+                                @else
+                                <input
+                                    type="button"
+                                    value="Login To Apply"
+                                    class="btn btn-danger ms-2"
+                                    style="cursor: not-allowed; opacity: 0.6;">
+                                @endif
+                            </form>
+
+
+                            <!-- @if (Auth::check())
+                            <a href=" #" id="saveJob" class="btn btn-primary" data-id="{{ $job->id }}">Save</a>
                             @else
                             <a href="javascript:void(0);" class="btn btn-danger" style="cursor: not-allowed; opacity: 0.6;">Login To Save</a>
                             @endif
@@ -87,8 +127,7 @@
                             <a href="#" id="aplliedJob" data-id="{{ $job->id }}" class="btn btn-danger">Apply</a>
                             @else
                             <a href="javascript:void(0);" class="btn btn-danger" style="cursor: not-allowed; opacity: 0.6;">Login To Apply</a>
-                            @endif
-
+                            @endif -->
                         </div>
                     </div>
                 </div>
@@ -112,7 +151,7 @@
                         </div>
 
                     </div>
-                    
+
                     <div class="table-responsive white-bg">
                         <table class="table table-striped">
                             <tr>
@@ -120,6 +159,7 @@
                                 <th>Email</th>
                                 <th>Mobile</th>
                                 <th>Applied Date</th>
+                                <th>Cv Template</th>
                             </tr>
 
                             @if($applications->isNotEmpty())
@@ -129,6 +169,7 @@
                                 <td>{{ $application->user->email }}</td>
                                 <td>{{ $application->user->mobile }}</td>
                                 <td>{{ \Carbon\Carbon::parse($application->user->created_at)->format('d M, Y') }}</td>
+                                <td><a href="{{ route('downloadCV', $application->id) }}">Download</a></td>
                             </tr>
                             @endforeach
 
@@ -191,25 +232,50 @@
 
 @section('customJs')
 <script type="text/javascript">
-    $('#aplliedJob').click(function(event) {
-        event.preventDefault();
-        if (confirm('Are You Sure You Want To Apply On This Job')) {
-            var id = $(this).data('id')
+    $('#aplliedJob').on('change', function() {
+        let jobId = $(this).data('id');
+        let file = this.files[0];
 
-            $.ajax({
-                url: "{{ route('applyJob') }}",
-                type: 'post',
-                data: {
-                    id: id
-                },
-                dataType: 'json',
-                success: function(response) {
-                    // success
-                    window.location.href = "{{ url()->current() }}";
-                },
-            })
-        }
-    })
+        let formData = new FormData();
+        formData.append('cv', file);
+        formData.append('job_id', jobId);
+
+        $.ajax({
+            url: "{{ route('applyJob') }}",
+            type: "POST",
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function() {
+                alert("Berhasil apply!");
+            },
+            error: function(xhr) {
+                console.log(xhr.responseText);
+                alert("Gagal apply!");
+            }
+        });
+
+
+
+        // event.preventDefault();
+        // if (confirm('Are You Sure You Want To Apply On This Job')) {
+        //     var id = $(this).data('id')
+
+        //     $.ajax({
+        //         url: "{{ route('applyJob') }}",
+        //         type: 'post',
+        //         data: {
+        //             id: id
+        //         },
+        //         dataType: 'json',
+        //         success: function(response) {
+        //             // success
+        //             window.location.href = "{{ url()->current() }}";
+        //         },
+        //     })
+        // }
+    });
+
 
     $('#saveJob').click(function(event) {
         event.preventDefault();
