@@ -185,7 +185,7 @@ class AccountController extends Controller
         $fileName = $id . '-' . time() . '.' . $ext;
 
         $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
-        $bucket = env('SUPABASE_BUCKET', 'profile-pics');
+        $bucket = env('SUPABASE_BUCKET', 'store_cv');
         $serviceRoleKey = env('SERVICE_ROLE_KEY');
 
         $client = new Client();

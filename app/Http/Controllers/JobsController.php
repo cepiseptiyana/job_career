@@ -13,6 +13,7 @@ use App\Models\SavedJob;
 use GuzzleHttp\Client;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Auth;
 // use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -152,48 +153,57 @@ class JobsController extends Controller
     // APPLY JOB
     public function applyJob(Request $request)
     {
-        $id = Auth::user()->id;
+        $job_id = $request->job_id;
 
+        // Validator
         $validator = Validator::make($request->all(), [
-            'image' => 'required|mimes:pdf'
+            'cv' => 'required|mimes:pdf'
         ]);
-
 
         if ($validator->fails()) {
             return response()->json(['status' => false, 'errors' => $validator->errors()]);
         }
 
-        $image = $request->cv;
-        $ext = $image->getClientOriginalExtension();
-        $fileName = $id . '-' . time() . '.' . $ext;
+        // Ambil file
+        $cv = $request->file('cv');
+        $ext = $cv->getClientOriginalExtension();
+        $fileName = $job_id . '-' . time() . '.' . $ext;
 
+        // Supabase info
         $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
-        $bucket = env('SUPABASE_BUCKET', 'profile-pics');
+        $bucket = env('SUPABASE_BUCKET', 'store_cv');
         $serviceRoleKey = env('SERVICE_ROLE_KEY');
-
-        $client = new Client();
 
         $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
 
+        $client = new Client();
+
         try {
-            $resp = $client->post($uploadUrl, [
+            $resp = $client->put($uploadUrl, [
                 'headers' => [
                     'Authorization' => "Bearer {$serviceRoleKey}",
-                    'Content-Type'  => $image->getMimeType(), // e.g. image/jpeg
+                    'Content-Type'  => $cv->getMimeType(),
                 ],
-                'body' => fopen($image->getPathname(), 'r'),
+                'body' => fopen($cv->getPathname(), 'r'),
                 'verify' => false,
-                // timeout optional:
                 'timeout' => 30,
             ]);
         } catch (\Exception $e) {
-            // tangani error (mis. 4xx/5xx)
             return response()->json(['error' => 'upload_failed', 'msg' => $e->getMessage()], 500);
         }
 
+        $job = Job::find($request->job_id);
+        $employer_id = $job->user_id; // contoh: employer = owner job
 
-        User::where('id', $id)->update(['image' => $fileName]);
-        session()->flash('success', 'Profile Picture Updated Successfully.');
+        // Simpan nama file / path ke DB
+        $application = new JobApplication();
+        $application->job_id       = $request->job_id;
+        $application->user_id      = Auth::user()->id;
+        $application->employer_id  = $employer_id;
+        $application->cv_path      = $fileName;
+        $application->applied_date = now();
+        $application->save();
+
         return response()->json(['status' => true, 'errors' => []]);
 
 
@@ -234,17 +244,60 @@ class JobsController extends Controller
 
     public function downloadCV($id)
     {
-        // Cari CV berdasarkan application id dan user login
-        $application = JobApplication::where('id', $id)
-            ->where('user_id', auth()->id()) // optional: batasi user hanya bisa download miliknya
-            ->firstOrFail();
+        // Cari record JobApplication
+        $application = JobApplication::findOrFail($id);
 
-        $path = storage_path('app/public/' . $application->cv_path);
-
-        if (!file_exists($path)) {
-            abort(404, 'CV file not found.');
+        // Opsional: batasi user hanya bisa download miliknya atau jika HRD owner job
+        if (auth()->id() != $application->user_id && auth()->id() != $application->job->user_id) {
+            abort(403, 'Unauthorized access');
         }
 
-        return response()->download($path);
+        $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
+        $bucket = env('SUPABASE_BUCKET', 'store_cv');
+        $serviceRoleKey = env('SERVICE_ROLE_KEY'); // atau gunakan anon key kalau bucket public
+        $fileName = $application->cv_path;
+
+        $fileUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
+
+        $client = new Client();
+
+
+        // GET FILE CV SUPABASE
+        try {
+            $resp = $client->get($fileUrl, [
+                'headers' => [
+                    'Authorization' => "Bearer {$serviceRoleKey}",
+                ],
+                'stream' => true, // agar bisa langsung stream file
+                'verify' => false,
+            ]);
+
+            $contentType = $resp->getHeaderLine('Content-Type') ?: 'application/pdf';
+            $disposition = 'attachment; filename="' . $fileName . '"';
+
+            return Response::stream(function () use ($resp) {
+                echo $resp->getBody()->getContents();
+            }, 200, [
+                'Content-Type' => $contentType,
+                'Content-Disposition' => $disposition
+            ]);
+        } catch (\Exception $e) {
+            abort(404, 'CV file not found on Supabase.');
+        }
+
+
+
+        // // Cari CV berdasarkan application id dan user login
+        // $application = JobApplication::where('id', $id)
+        //     ->where('user_id', auth()->id()) // optional: batasi user hanya bisa download miliknya
+        //     ->firstOrFail();
+
+        // $path = storage_path('app/public/' . $application->cv_path);
+
+        // if (!file_exists($path)) {
+        //     abort(404, 'CV file not found.');
+        // }
+
+        // return response()->download($path);
     }
 }

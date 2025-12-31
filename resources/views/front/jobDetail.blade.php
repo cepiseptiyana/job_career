@@ -133,9 +133,9 @@
                 </div>
 
 
-                {{-- TAMPILKAN DATA PELAMAR --}}
+                <!-- {{-- TAMPILKAN DATA PELAMAR --}} -->
                 @if (Auth::user())
-                {{-- tampilkan sesaui pelamar user --}}
+                <!-- {{-- tampilkan sesuai pelamar user --}} -->
                 @if(Auth::user()->id == $job->user_id)
                 <div class="card shadow border-0 mt-4">
                     <div class="job_details_header">
@@ -184,6 +184,8 @@
                 @endif
                 @endif
             </div>
+
+            <!--  -->
 
             <div class="col-md-4">
                 <div class="card shadow border-0">
@@ -246,7 +248,8 @@
             data: formData,
             processData: false,
             contentType: false,
-            success: function() {
+            success: function(response) {
+                console.log(response);
                 alert("Berhasil apply!");
             },
             error: function(xhr) {
