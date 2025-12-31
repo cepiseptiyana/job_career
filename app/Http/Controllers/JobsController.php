@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\JobNotificationEmail;
+// use App\Mail\JobNotificationEmail;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\Job;
@@ -10,9 +10,12 @@ use App\Models\JobApplication;
 use App\Models\JobType;
 use App\Models\SavedJob;
 
+use GuzzleHttp\Client;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
+// use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
 class JobsController extends Controller
 {
@@ -149,38 +152,84 @@ class JobsController extends Controller
     // APPLY JOB
     public function applyJob(Request $request)
     {
-        $job_id = $request->job_id;
-        // --- 1. Pastikan user login ---
-        if (!auth()->check()) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
+        $id = Auth::user()->id;
 
-        // --- 2. Validasi request ---
-        $request->validate([
-            'job_id' => 'required|integer|exists:jobs,id',
-            'cv'     => 'required|file|mimes:pdf,doc,docx|max:2048'
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|mimes:pdf'
         ]);
 
-        // --- 3. Upload file ---
-        $file = $request->file('cv');
-        $filename = time() . '_' . $file->getClientOriginalName();
-        $path = $file->storeAs('cv', $filename, 'public');
 
-        // --- 4. Ambil employer dari job ---
-        $job = Job::find($request->job_id);
-        $employer_id = $job->user_id; // contoh: employer = owner job
+        if ($validator->fails()) {
+            return response()->json(['status' => false, 'errors' => $validator->errors()]);
+        }
 
-        // --- 5. Simpan ke database (manual) ---
-        $application = new JobApplication();
-        $application->job_id       = $request->job_id;
-        $application->user_id      = Auth::user()->id;
-        $application->employer_id  = $employer_id;
-        $application->cv_path      = $path;
-        $application->applied_date = now();
-        $application->save();
+        $image = $request->cv;
+        $ext = $image->getClientOriginalExtension();
+        $fileName = $id . '-' . time() . '.' . $ext;
 
-        // --- 6. Response sukses ---
-        return response()->json(['message' => 'Berhasil apply!']);
+        $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
+        $bucket = env('SUPABASE_BUCKET', 'profile-pics');
+        $serviceRoleKey = env('SERVICE_ROLE_KEY');
+
+        $client = new Client();
+
+        $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
+
+        try {
+            $resp = $client->post($uploadUrl, [
+                'headers' => [
+                    'Authorization' => "Bearer {$serviceRoleKey}",
+                    'Content-Type'  => $image->getMimeType(), // e.g. image/jpeg
+                ],
+                'body' => fopen($image->getPathname(), 'r'),
+                'verify' => false,
+                // timeout optional:
+                'timeout' => 30,
+            ]);
+        } catch (\Exception $e) {
+            // tangani error (mis. 4xx/5xx)
+            return response()->json(['error' => 'upload_failed', 'msg' => $e->getMessage()], 500);
+        }
+
+
+        User::where('id', $id)->update(['image' => $fileName]);
+        session()->flash('success', 'Profile Picture Updated Successfully.');
+        return response()->json(['status' => true, 'errors' => []]);
+
+
+
+        // $job_id = $request->job_id;
+        // // --- 1. Pastikan user login ---
+        // if (!auth()->check()) {
+        //     return response()->json(['error' => 'Unauthorized'], 401);
+        // }
+
+        // // --- 2. Validasi request ---
+        // $request->validate([
+        //     'job_id' => 'required|integer|exists:jobs,id',
+        //     'cv'     => 'required|file|mimes:pdf,doc,docx|max:2048'
+        // ]);
+
+        // // --- 3. Upload file ---
+        // $file = $request->file('cv');
+        // $filename = time() . '_' . $file->getClientOriginalName();
+        // $path = $file->storeAs('cv', $filename, 'public');
+
+        // // --- 4. Ambil employer dari job ---
+        // $job = Job::find($request->job_id);
+        // $employer_id = $job->user_id; // contoh: employer = owner job
+
+        // // --- 5. Simpan ke database (manual) ---
+        // $application = new JobApplication();
+        // $application->job_id       = $request->job_id;
+        // $application->user_id      = Auth::user()->id;
+        // $application->employer_id  = $employer_id;
+        // $application->cv_path      = $path;
+        // $application->applied_date = now();
+        // $application->save();
+
+        // // --- 6. Response sukses ---
+        // return response()->json(['message' => 'Berhasil apply!']);
     }
 
     public function downloadCV($id)
