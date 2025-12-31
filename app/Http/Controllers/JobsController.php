@@ -68,7 +68,7 @@ class JobsController extends Controller
         }
 
         // paginate
-        $jobs = $jobs->paginate(9);
+        $jobs = $jobs->paginate(5);
 
         return view('front.jobs', ['categories' => $categories, 'jobTypes' => $jobTypes, 'jobs' => $jobs, 'jobTypeArray' => $jobTypeArray]);
     }
@@ -181,79 +181,6 @@ class JobsController extends Controller
 
         // --- 6. Response sukses ---
         return response()->json(['message' => 'Berhasil apply!']);
-
-
-        // -----------------
-        // -----------------
-        // $id = $request->id;
-
-        // $job = Job::where('id', $id)->first();
-
-        // // jika job tidak ditemukan di db
-        // if ($job == null) {
-        //     $message = 'Job Does Not Exist.';
-        //     session()->flash('error', $message);
-
-        //     return response()->json([
-        //         'status' => false,
-        //         'message' => $message
-        //     ]);
-        // }
-
-        // // you can not apply on your own job
-        // // jika di table jobs ada users_id yang sama maka jangan di apply
-        // $employer_id = $job->user_id;
-
-        // if ($employer_id == Auth::user()->id) {
-        //     $message = 'You Can Not Apply On Your Own Job.';
-        //     session()->flash('error', $message);
-
-        //     return response()->json([
-        //         'status' => false,
-        //         'message' => $message
-        //     ]);
-        // }
-
-        // // you can not apply on a job twise / gaboleh apply job yang sama
-        // $jobApplicationCount = JobApplication::where([
-        //     'user_id' => Auth::user()->id,
-        //     'job_id' => $id
-        // ])->count();
-
-        // if ($jobApplicationCount > 0) {
-        //     $message = 'You AlReady Applied On This Job.';
-        //     session()->flash('error', $message);
-
-        //     return response()->json([
-        //         'status' => false,
-        //         'message' => $message
-        //     ]);
-        // }
-
-        // $application = new JobApplication();
-        // $application->job_id = $id;
-        // $application->user_id = Auth::user()->id;
-        // $application->employer_id = $employer_id;
-        // $application->applied_date = now();
-        // $application->save();
-
-        // // send notification email to employer
-        // $employer = User::where('id', $employer_id)->first();
-        // $mailData = [
-        //     'employer' => $employer,
-        //     'user' => Auth::user(),
-        //     'job' => $job,
-        // ];
-
-        // Mail::to($employer->email)->send(new JobNotificationEmail($mailData));
-
-        // $message = 'You Have Successfully Applied Job.';
-        // session()->flash('success', $message);
-
-        // return response()->json([
-        //     'status' => true,
-        //     'message' => $message
-        // ]);
     }
 
     public function downloadCV($id)

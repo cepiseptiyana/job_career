@@ -254,26 +254,6 @@
                 alert("Gagal apply!");
             }
         });
-
-
-
-        // event.preventDefault();
-        // if (confirm('Are You Sure You Want To Apply On This Job')) {
-        //     var id = $(this).data('id')
-
-        //     $.ajax({
-        //         url: "{{ route('applyJob') }}",
-        //         type: 'post',
-        //         data: {
-        //             id: id
-        //         },
-        //         dataType: 'json',
-        //         success: function(response) {
-        //             // success
-        //             window.location.href = "{{ url()->current() }}";
-        //         },
-        //     })
-        // }
     });
 
 

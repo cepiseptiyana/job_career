@@ -32,8 +32,6 @@ Route::post('/save-job', [JobsController::class, 'saveJob'])->name('saveJob');
 // DOWNLOAD CV
 Route::get('/download-cv/{id}', [JobsController::class, 'downloadCV'])->name('downloadCV');
 
-
-
 // DASHBOARD
 Route::group(['prefix' => 'admin', 'middleware' => 'checkRole'], function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
