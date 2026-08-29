@@ -77,7 +77,7 @@
 
                         <!-- SAVE JOB -->
                         <div class="pt-3 text-end">
-                            <form action="" enctype="multipart/form-data" class="pt-3 text-end">
+                            <form action="" method="POST" enctype="multipart/form-data" class="pt-3 text-end">
                                 {{-- SAVE BUTTON --}}
                                 @if (Auth::check())
                                 <input
@@ -102,7 +102,7 @@
                                         id="aplliedJob"
                                         type="file"
                                         data-id="{{ $job->id }}"
-                                        name="cv"
+                                        name="cv_path"
                                         accept="application/pdf"
                                         style="display: none;">
                                 </label>
@@ -239,7 +239,7 @@
         let file = this.files[0];
 
         let formData = new FormData();
-        formData.append('cv', file);
+        formData.append('cv_path', file);
         formData.append('job_id', jobId);
 
         $.ajax({

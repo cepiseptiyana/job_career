@@ -153,151 +153,158 @@ class JobsController extends Controller
     // APPLY JOB
     public function applyJob(Request $request)
     {
-        $job_id = $request->job_id;
+        // $job_id = $request->job_id;
 
         // Validator
-        $validator = Validator::make($request->all(), [
-            'cv' => 'required|mimes:pdf'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['status' => false, 'errors' => $validator->errors()]);
-        }
-
-        // Ambil file
-        $cv = $request->file('cv');
-        $ext = $cv->getClientOriginalExtension();
-        $fileName = $job_id . '-' . time() . '.' . $ext;
-
-        // Supabase info
-        $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
-        $bucket = env('SUPABASE_BUCKET', 'store_cv');
-        $serviceRoleKey = env('SERVICE_ROLE_KEY');
-
-        $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
-
-        $client = new Client();
-
-        try {
-            $resp = $client->put($uploadUrl, [
-                'headers' => [
-                    'Authorization' => "Bearer {$serviceRoleKey}",
-                    'Content-Type'  => $cv->getMimeType(),
-                ],
-                'body' => fopen($cv->getPathname(), 'r'),
-                'verify' => false,
-                'timeout' => 30,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'upload_failed', 'msg' => $e->getMessage()], 500);
-        }
-
-        $job = Job::find($request->job_id);
-        $employer_id = $job->user_id; // contoh: employer = owner job
-
-        // Simpan nama file / path ke DB
-        $application = new JobApplication();
-        $application->job_id       = $request->job_id;
-        $application->user_id      = Auth::user()->id;
-        $application->employer_id  = $employer_id;
-        $application->cv_path      = $fileName;
-        $application->applied_date = now();
-        $application->save();
-
-        return response()->json(['status' => true, 'errors' => []]);
-
-
-
-        // $job_id = $request->job_id;
-        // // --- 1. Pastikan user login ---
-        // if (!auth()->check()) {
-        //     return response()->json(['error' => 'Unauthorized'], 401);
-        // }
-
-        // // --- 2. Validasi request ---
-        // $request->validate([
-        //     'job_id' => 'required|integer|exists:jobs,id',
-        //     'cv'     => 'required|file|mimes:pdf,doc,docx|max:2048'
+        // $validator = Validator::make($request->all(), [
+        //     'cv_path' => 'required|mimes:pdf'
         // ]);
 
-        // // --- 3. Upload file ---
-        // $file = $request->file('cv');
-        // $filename = time() . '_' . $file->getClientOriginalName();
-        // $path = $file->storeAs('cv', $filename, 'public');
+        // if ($validator->fails()) {
+        //     return response()->json(['status' => false, 'errors' => $validator->errors()]);
+        // }
 
-        // // --- 4. Ambil employer dari job ---
+        // Ambil file
+        // $cv = $request->file('cv');
+        // $ext = $cv->getClientOriginalExtension();
+        // $fileName = $job_id . '-' . time() . '.' . $ext;
+
+        // Supabase info
+        // $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
+        // $bucket = env('SUPABASE_BUCKET', 'store_cv');
+        // $serviceRoleKey = env('SERVICE_ROLE_KEY');
+
+        // $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
+
+        // $client = new Client();
+
+        // try {
+        //     $resp = $client->put($uploadUrl, [
+        //         'headers' => [
+        //             'Authorization' => "Bearer {$serviceRoleKey}",
+        //             'Content-Type'  => $cv->getMimeType(),
+        //         ],
+        //         'body' => fopen($cv->getPathname(), 'r'),
+        //         'verify' => false,
+        //         'timeout' => 30,
+        //     ]);
+        // } catch (\Exception $e) {
+        //     return response()->json(['error' => 'upload_failed', 'msg' => $e->getMessage()], 500);
+        // }
+
         // $job = Job::find($request->job_id);
         // $employer_id = $job->user_id; // contoh: employer = owner job
 
-        // // --- 5. Simpan ke database (manual) ---
+        // // Simpan nama file / path ke DB
         // $application = new JobApplication();
         // $application->job_id       = $request->job_id;
         // $application->user_id      = Auth::user()->id;
         // $application->employer_id  = $employer_id;
-        // $application->cv_path      = $path;
+        // $application->cv_path      = $fileName;
         // $application->applied_date = now();
         // $application->save();
 
-        // // --- 6. Response sukses ---
-        // return response()->json(['message' => 'Berhasil apply!']);
+        // return response()->json(['status' => true, 'errors' => []]);
+
+
+
+        // cepicv.pdf
+
+        $job_id = $request->job_id;
+        // --- 1. Pastikan user login ---
+        if (!auth()->check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // --- 2. Validasi request ---
+        $request->validate([
+            'job_id' => 'required|integer|exists:jobs,id',
+            'cv_path'     => 'required|file|mimes:pdf,doc,docx|max:2048'
+        ]);
+
+        // --- 3. Upload file ---
+        $file = $request->file('cv_path');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        // $path = $file->storeAs('upload_cv', $filename, 'public');
+        $file->move(
+            public_path('upload_cv'),
+            $filename
+        );
+
+        $path = 'upload_cv/' . $filename;
+
+        // --- 4. Ambil employer dari job ---
+        $job = Job::find($request->job_id);
+        $employer_id = $job->user_id; // contoh: employer = owner job
+
+        // --- 5. Simpan ke database (manual) ---
+        $application = new JobApplication();
+        $application->job_id       = $request->job_id;
+        $application->user_id      = Auth::user()->id;
+        $application->employer_id  = $employer_id;
+        $application->cv_path      = $path;
+        $application->applied_date = now();
+        $application->save();
+
+        // --- 6. Response sukses ---
+        return response()->json(['message' => 'Berhasil apply!']);
     }
 
-    public function downloadCV($id)
+    public function downloadCV(string $id)
     {
-        // Cari record JobApplication
-        $application = JobApplication::findOrFail($id);
+        // // Cari record JobApplication
+        // $application = JobApplication::findOrFail($id);
 
-        // Opsional: batasi user hanya bisa download miliknya atau jika HRD owner job
-        if (auth()->id() != $application->user_id && auth()->id() != $application->job->user_id) {
-            abort(403, 'Unauthorized access');
-        }
-
-        $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
-        $bucket = env('SUPABASE_BUCKET', 'store_cv');
-        $serviceRoleKey = env('SERVICE_ROLE_KEY'); // atau gunakan anon key kalau bucket public
-        $fileName = $application->cv_path;
-
-        $fileUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
-
-        $client = new Client();
-
-
-        // GET FILE CV SUPABASE
-        try {
-            $resp = $client->get($fileUrl, [
-                'headers' => [
-                    'Authorization' => "Bearer {$serviceRoleKey}",
-                ],
-                'stream' => true, // agar bisa langsung stream file
-                'verify' => false,
-            ]);
-
-            $contentType = $resp->getHeaderLine('Content-Type') ?: 'application/pdf';
-            $disposition = 'attachment; filename="' . $fileName . '"';
-
-            return Response::stream(function () use ($resp) {
-                echo $resp->getBody()->getContents();
-            }, 200, [
-                'Content-Type' => $contentType,
-                'Content-Disposition' => $disposition
-            ]);
-        } catch (\Exception $e) {
-            abort(404, 'CV file not found on Supabase.');
-        }
-
-
-
-        // // Cari CV berdasarkan application id dan user login
-        // $application = JobApplication::where('id', $id)
-        //     ->where('user_id', auth()->id()) // optional: batasi user hanya bisa download miliknya
-        //     ->firstOrFail();
-
-        // $path = storage_path('app/public/' . $application->cv_path);
-
-        // if (!file_exists($path)) {
-        //     abort(404, 'CV file not found.');
+        // // Opsional: batasi user hanya bisa download miliknya atau jika HRD owner job
+        // if (auth()->id() != $application->user_id && auth()->id() != $application->job->user_id) {
+        //     abort(403, 'Unauthorized access');
         // }
 
-        // return response()->download($path);
+        // $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
+        // $bucket = env('SUPABASE_BUCKET', 'store_cv');
+        // $serviceRoleKey = env('SERVICE_ROLE_KEY'); // atau gunakan anon key kalau bucket public
+        // $fileName = $application->cv_path;
+
+        // $fileUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
+
+        // $client = new Client();
+
+
+        // // GET FILE CV SUPABASE
+        // try {
+        //     $resp = $client->get($fileUrl, [
+        //         'headers' => [
+        //             'Authorization' => "Bearer {$serviceRoleKey}",
+        //         ],
+        //         'stream' => true, // agar bisa langsung stream file
+        //         'verify' => false,
+        //     ]);
+
+        //     $contentType = $resp->getHeaderLine('Content-Type') ?: 'application/pdf';
+        //     $disposition = 'attachment; filename="' . $fileName . '"';
+
+        //     return Response::stream(function () use ($resp) {
+        //         echo $resp->getBody()->getContents();
+        //     }, 200, [
+        //         'Content-Type' => $contentType,
+        //         'Content-Disposition' => $disposition
+        //     ]);
+        // } catch (\Exception $e) {
+        //     abort(404, 'CV file not found on Supabase.');
+        // }
+
+
+        // Cari CV berdasarkan application id dan user login
+        $application = JobApplication::where('id', $id)
+            ->where('employer_id', auth()->id())
+            ->firstOrFail();
+
+        $filePath = public_path($application->cv_path);
+
+        if (!file_exists($filePath)) {
+            abort(404, 'CV file not found.');
+        }
+
+        return response()->download($filePath);
     }
 }
