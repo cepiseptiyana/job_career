@@ -60,6 +60,8 @@ Route::group(['prefix' => 'account'], function () {
         Route::get('/register', [AccountController::class, 'register'])->name('account.register');
         Route::post('/registerValidation', [AccountController::class, 'registerValidation'])->name('account.registerValidation');
         Route::get('/login', [AccountController::class, 'login'])->name('account.login');
+
+        // cek data login akun
         Route::post('/authenticate', [AccountController::class, 'authenticate'])->name('account.authenticate');
     });
 

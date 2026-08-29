@@ -12,13 +12,14 @@ use App\Models\User;
 use GuzzleHttp\Client;
 
 use Illuminate\Http\Request;
+
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
+// use Intervention\Image\ImageManager;
+// use Intervention\Image\Drivers\Gd\Driver;
 
 class AccountController extends Controller
 {
@@ -67,6 +68,8 @@ class AccountController extends Controller
         return view("front.account.login");
     }
 
+
+    // ! AUTHENTICATE DATA LOGIN
     // this method will show user login page + cek csrf
     public function authenticate(Request $request)
     {
@@ -78,10 +81,11 @@ class AccountController extends Controller
         if ($validator->passes()) {
             // Auth = jika benar data user di simpan di session
             if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+                // dd(Auth::user());
                 return redirect()->route('account.profile');
             } else {
                 // with == flash session
-                return redirect()->route('account.login')->with('error', 'Either Email/Password is incorrect.');
+                return redirect()->route('account.login')->with('error', 'Email/Kata Sandi salah.');
             }
         } else {
             // validator tidak terpenuhi
@@ -89,7 +93,7 @@ class AccountController extends Controller
         }
     }
 
-    // PROFILE
+    // ! PROFILE
     public function profile()
     {
         $id = Auth::user()->id;
