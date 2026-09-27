@@ -153,63 +153,6 @@ class JobsController extends Controller
     // APPLY JOB
     public function applyJob(Request $request)
     {
-        // $job_id = $request->job_id;
-
-        // Validator
-        // $validator = Validator::make($request->all(), [
-        //     'cv_path' => 'required|mimes:pdf'
-        // ]);
-
-        // if ($validator->fails()) {
-        //     return response()->json(['status' => false, 'errors' => $validator->errors()]);
-        // }
-
-        // Ambil file
-        // $cv = $request->file('cv');
-        // $ext = $cv->getClientOriginalExtension();
-        // $fileName = $job_id . '-' . time() . '.' . $ext;
-
-        // Supabase info
-        // $supabaseUrl = rtrim(env('SUPABASE_URL'), '/');
-        // $bucket = env('SUPABASE_BUCKET', 'store_cv');
-        // $serviceRoleKey = env('SERVICE_ROLE_KEY');
-
-        // $uploadUrl = "{$supabaseUrl}/storage/v1/object/{$bucket}/{$fileName}";
-
-        // $client = new Client();
-
-        // try {
-        //     $resp = $client->put($uploadUrl, [
-        //         'headers' => [
-        //             'Authorization' => "Bearer {$serviceRoleKey}",
-        //             'Content-Type'  => $cv->getMimeType(),
-        //         ],
-        //         'body' => fopen($cv->getPathname(), 'r'),
-        //         'verify' => false,
-        //         'timeout' => 30,
-        //     ]);
-        // } catch (\Exception $e) {
-        //     return response()->json(['error' => 'upload_failed', 'msg' => $e->getMessage()], 500);
-        // }
-
-        // $job = Job::find($request->job_id);
-        // $employer_id = $job->user_id; // contoh: employer = owner job
-
-        // // Simpan nama file / path ke DB
-        // $application = new JobApplication();
-        // $application->job_id       = $request->job_id;
-        // $application->user_id      = Auth::user()->id;
-        // $application->employer_id  = $employer_id;
-        // $application->cv_path      = $fileName;
-        // $application->applied_date = now();
-        // $application->save();
-
-        // return response()->json(['status' => true, 'errors' => []]);
-
-
-
-        // cepicv.pdf
-
         $job_id = $request->job_id;
         // --- 1. Pastikan user login ---
         if (!auth()->check()) {
@@ -234,8 +177,15 @@ class JobsController extends Controller
         $path = 'upload_cv/' . $filename;
 
         // --- 4. Ambil employer dari job ---
-        $job = Job::find($request->job_id);
+        $job = Job::find($job_id);
         $employer_id = $job->user_id; // contoh: employer = owner job
+
+        if (auth()->id() === $employer_id) {
+            return response()->json(['error' => 'gagal apply are u employer'], 403);
+        }
+
+        // jika yang klik apply itu adalah employer maka gagal apply
+        // cek id user dengan employer_id jika sama maka gagal apply
 
         // --- 5. Simpan ke database (manual) ---
         $application = new JobApplication();

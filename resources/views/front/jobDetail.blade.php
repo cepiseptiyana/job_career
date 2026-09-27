@@ -78,6 +78,8 @@
                         <!-- SAVE JOB -->
                         <div class="pt-3 text-end">
                             <form action="" method="POST" enctype="multipart/form-data" class="pt-3 text-end">
+                                @csrf
+
                                 {{-- SAVE BUTTON --}}
                                 @if (Auth::check())
                                 <input
