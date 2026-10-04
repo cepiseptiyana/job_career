@@ -2,37 +2,39 @@
 
 Dokumen ini berisi panduan langkah demi langkah untuk menjalankan lingkungan pengembangan (_development environment_) Laravel menggunakan **Docker Compose**.
 
-Konfigurasi ini sudah mencakup layanan **Nginx**, **PHP-FPM** (lengkap dengan Xdebug), **Workspace Container** (untuk menjalankan Vite/Node/Composer), dan **MySQL 8.0**.
+Konfigurasi ini mencakup layanan **Nginx**, **PHP-FPM** (lengkap dengan Xdebug), **Workspace Container** (untuk menjalankan Vite/Node), dan **MySQL 8.0**.
 
 ---
 
 ## 🛠️ Prasyarat (Prerequisites)
 
-Sebelum memulai, pastikan perangkat Anda sudah menginstal aplikasi berikut:
+Pastikan perangkat Anda sudah menginstal:
 
 -   **Docker Desktop v4.15.0 atau lebih baru** (atau Docker Engine di Linux)
 -   **Docker Compose** (V2)
+
+> **Catatan Linux:** Jika user Anda belum masuk grup `docker`, tambahkan `sudo` di depan setiap perintah `docker` pada panduan ini.
 
 ---
 
 ## 🚀 Cara Menjalankan Proyek
 
-Ikuti langkah-langkah berikut melalui terminal untuk memastikan Docker aktif, membangun container, menyiapkan database, dan menyalakan server frontend:
+Jalankan semua perintah dari _root folder_ proyek, **sesuai urutan**. Dua hal penting:
+
+-   `vendor/` dan `APP_KEY` harus sudah ada **sebelum** container dibuild. Jika tidak, container `php-fpm` berhenti (502 Bad Gateway) atau Laravel menampilkan error _key_.
+-   Container membaca file `.env` **saat dibuat**. Karena itu `APP_KEY` dibuat sebelum build, bukan sesudahnya.
 
 ### Langkah 0: Pastikan Docker Engine Aktif
 
-Sebelum menjalankan perintah Docker Compose, aplikasi _Docker Engine_ atau _Docker Desktop_ harus dalam posisi aktif/berjalan di sistem Anda. Anda bisa langsung menyalakannya melalui terminal menggunakan perintah berikut:
-
--   **Bagi Pengguna macOS:**
+-   **macOS:**
     ```bash
     open -a Docker
     ```
--   **Bagi Pengguna Linux:**
+-   **Linux:**
     ```bash
     sudo systemctl start docker
     ```
--   **Bagi Pengguna Windows (PowerShell):**
-    Sesuaikan perintah berdasarkan tipe instalasi Docker Desktop Anda:
+-   **Windows (PowerShell):**
 
     _Jika diinstal untuk semua pengguna (**All-Users**):_
 
@@ -40,17 +42,104 @@ Sebelum menjalankan perintah Docker Compose, aplikasi _Docker Engine_ atau _Dock
     Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
     ```
 
-    _Jika diinstal khusus untuk pengguna saat ini saja (**Per-User**):_
+    _Jika diinstal khusus untuk pengguna saat ini (**Per-User**):_
 
     ```powershell
     Start-Process "$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe"
     ```
 
-    _Tunggu sekitar 10–20 detik sampai Docker Engine benar-benar siap dan aktif di latar belakang._
+    _Tunggu sekitar 10–20 detik sampai Docker Engine benar-benar siap._
 
-### Langkah 1: Build dan Jalankan Container
+### Langkah 1: Bersihkan Container dan Volume Lama
 
-Jalankan perintah berikut pada terminal di _root folder_ proyek Anda untuk mengunduh _image_, membangun (_build_), dan menjalankan semua layanan di latar belakang (_detached mode_):
+```bash
+docker compose --file compose.dev.yaml down -v
+```
+
+_Langkah ini menghapus container dan data MySQL lama. Lewati jika ini instalasi pertama dan belum ada container yang pernah dijalankan._
+
+### Langkah 2: Salin File Environment
+
+```bash
+cp .env.example .env
+```
+
+### Langkah 3: Edit File `.env`
+
+```bash
+nano .env
+```
+
+Pastikan nilai berikut ada, **masing-masing hanya satu kali** (jika ada baris ganda, baris paling bawah yang dipakai). Biarkan `APP_KEY=` kosong karena diisi pada Langkah 5.
+
+```env
+# Sesuaikan dengan hasil `id -u` dan `id -g` (Linux/macOS)
+UID=1000
+GID=1000
+
+# Database MySQL
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=laravel
+DB_USERNAME=laravel
+DB_PASSWORD=secret
+
+# Tidak memakai Redis
+CACHE_STORE=file
+SESSION_DRIVER=file
+QUEUE_CONNECTION=sync
+```
+
+Simpan dengan `Ctrl+O`, `Enter`, lalu keluar dengan `Ctrl+X`.
+
+**Hal yang wajib diperhatikan:**
+
+-   `DB_HOST` harus `mysql` (nama service di Docker), **bukan** `localhost`.
+-   `DB_USERNAME` **tidak boleh `root`**. Nilai ini dipakai sebagai `MYSQL_USER`, dan MySQL menolak start jika diisi `root`.
+-   `DB_PASSWORD` **tidak boleh kosong**. Jika kosong, MySQL memakai password `root` sementara Laravel login dengan password kosong, sehingga koneksi ditolak.
+-   Perubahan `DB_*` baru berlaku pada volume database yang bersih, jadi jalankan Langkah 1 jika MySQL pernah dijalankan dengan nilai berbeda.
+
+### Langkah 4: Install Dependensi Composer
+
+Gunakan image Composer resmi, sehingga tidak perlu container proyek:
+
+```bash
+docker run --rm -u $(id -u):$(id -g) -v "$PWD":/app -w /app composer:2 composer install --ignore-platform-reqs
+```
+
+**Penjelasan Perintah:**
+
+-   `-u $(id -u):$(id -g)`: Folder `vendor/` dimiliki oleh user Anda, bukan root.
+-   `--ignore-platform-reqs`: Image Composer tidak memiliki semua ekstensi PHP proyek. Ekstensi yang sebenarnya tersedia di container `php-fpm`.
+
+Pastikan hasilnya berhasil:
+
+```bash
+ls vendor/autoload.php
+```
+
+_Catatan Windows PowerShell: gunakan `docker run --rm -v "${PWD}:/app" -w /app composer:2 composer install --ignore-platform-reqs`._
+
+### Langkah 5: Generate Application Key (Sekali Saja)
+
+Dijalankan **sebelum** build, memakai image Composer yang sama:
+
+```bash
+docker run --rm -u $(id -u):$(id -g) -v "$PWD":/app -w /app composer:2 php artisan key:generate
+```
+
+Cek bahwa key terisi dengan benar (hasil harus **51**):
+
+```bash
+awk -F= '/^APP_KEY=/{print length($0)-8}' .env
+```
+
+> ⚠️ **Jangan jalankan `key:generate` lebih dari sekali.** Jika key sudah terisi dan Anda menjalankannya lagi saat container sedang berjalan, nilai `APP_KEY` bisa rusak (_Unsupported cipher or incorrect key length_). Jika perlu mengulang, kosongkan lagi `APP_KEY=` di `.env` terlebih dahulu.
+
+_Alternatif jika perintah di atas gagal: buat key dengan `echo "base64:$(openssl rand -base64 32)"`, lalu tempel hasilnya ke `APP_KEY=` di `.env`._
+
+### Langkah 6: Build dan Jalankan Container
 
 ```bash
 docker compose --file compose.dev.yaml up --build -d
@@ -58,109 +147,120 @@ docker compose --file compose.dev.yaml up --build -d
 
 **Penjelasan Perintah:**
 
--   `--file compose.dev.yaml`: Menginstruksikan Docker untuk menggunakan file konfigurasi spesifik (bukan file `compose.yaml` standar).
--   `up`: Perintah untuk membuat dan menyalakan container.
--   `--build`: Memaksa Docker untuk membangun ulang konfigurasi Dockerfile (sangat berguna jika ada perubahan pada konfigurasi PHP atau Workspace).
--   `-d`: Menjalankan container di latar belakang (_detached mode_), sehingga terminal Anda tetap bisa digunakan untuk perintah lain.
+-   `--file compose.dev.yaml`: Menggunakan file konfigurasi khusus development.
+-   `up`: Membuat dan menyalakan container.
+-   `--build`: Memaksa build ulang image sesuai Dockerfile.
+-   `-d`: Berjalan di latar belakang (_detached mode_).
 
-### Langkah 2: Jalankan Migrasi Database
+Tunggu sekitar 25 detik, lalu cek status:
 
-Setelah semua container berhasil berjalan (terutama layanan `mysql` dan `php-fpm`), buat struktur tabel database Anda dengan menjalankan perintah ini:
+```bash
+docker compose --file compose.dev.yaml ps -a
+```
+
+Keempat service (`web`, `php-fpm`, `workspace`, `mysql`) harus berstatus **`Up`**.
+
+### Langkah 7: Jalankan Migrasi Database
+
+**Tunggu MySQL siap terlebih dahulu.** Pada instalasi pertama, MySQL butuh sekitar 20–40 detik untuk inisialisasi. Jika `migrate` dijalankan terlalu cepat, muncul error `Connection refused`. Cek log:
+
+```bash
+docker compose --file compose.dev.yaml logs mysql --tail 5
+```
+
+Lanjutkan jika sudah ada baris `ready for connections` dengan `port: 3306`. Lalu:
 
 ```bash
 docker compose --file compose.dev.yaml exec php-fpm php artisan migrate
 ```
 
-**Penjelasan Perintah:**
+_Jika masih `Connection refused`, tunggu 15–20 detik lalu ulangi perintah `migrate`._
 
--   `exec php-fpm`: Menginstruksikan Docker untuk masuk dan mengeksekusi perintah di dalam container `php-fpm` yang sedang berjalan.
--   `php artisan migrate`: Perintah standar Laravel untuk menjalankan file migrasi database.
+Setelah itu buka [http://localhost](http://localhost) dan refresh dengan `Ctrl+Shift+R`.
 
-### Langkah 3: Menyalakan Server Frontend (Vite) via Workspace
+### Langkah 8: Menyalakan Server Frontend (Vite) via Workspace
 
-Meskipun container `workspace` sudah menyala, server aset **Vite** di dalamnya harus dipicu secara manual agar CSS/JS pada UI Blade Anda dapat dimuat dengan benar oleh _browser_.
+Server aset **Vite** harus dinyalakan manual agar CSS/JS dapat dimuat browser.
 
-1. Masuk ke dalam terminal container `workspace`:
+1. Masuk ke container `workspace`:
     ```bash
     docker compose --file compose.dev.yaml exec -it workspace bash
     ```
-2. Setelah masuk dan berada di dalam path `/var/www`, jalankan perintah berikut untuk menginstal package Node.js dan menyalakan server Vite:
+2. Di dalam `/var/www`, jalankan:
 
     ```bash
     npm install && npm run dev -- --host
     ```
 
-    _Catatan: Parameter `-- --host` wajib digunakan agar server Vite di dalam Docker dapat diakses dari browser komputer asli Anda._
+    _Catatan: Parameter `-- --host` wajib agar Vite di dalam Docker dapat diakses dari browser komputer Anda._
 
-3. **Cara Menonaktifkan Vite dan Keluar dari Workspace:**
-   Jika Anda selesai bekerja dan ingin keluar dari terminal container tersebut, lakukan langkah berikut:
-    - Tekan tombol `Ctrl + C` pada keyboard untuk menghentikan server Vite.
-    - Ketik perintah `exit` lalu tekan `Enter` untuk keluar dan kembali ke terminal komputer asli Anda.
-
-### 🔍 Cara Mengecek Status Container
-
-Untuk memastikan semua container (`web`, `php-fpm`, `workspace`, dan `mysql`) sudah berjalan dengan benar dan melihat port yang aktif, jalankan perintah berikut di terminal komputer asli Anda:
-
-```bash
-docker compose --file compose.dev.yaml ps
-```
-
-**Cara Membaca Hasilnya:**
-
--   Cari kolom **STATUS** atau **STATE**. Jika tertulis **`Up`** atau **`Running`**, berarti container berjalan dengan lancar.
--   Jika ada container yang berstatus **`Exited`**, berarti terjadi masalah pada layanan tersebut (Anda bisa mengecek penyebabnya dengan perintah `docker compose --file compose.dev.yaml logs <nama-layanan>`).
+3. **Cara menghentikan Vite dan keluar dari Workspace:**
+    - Tekan `Ctrl + C` untuk menghentikan Vite.
+    - Ketik `exit` lalu tekan `Enter`.
 
 ---
 
 ## 🌐 Akses Layanan
 
-Setelah langkah-langkah di atas selesai dijalankan, Anda dapat mengakses proyek melalui peramban (_browser_) dengan alamat berikut:
-
 -   **Aplikasi Web (Laravel):** [http://localhost](http://localhost) (Port `80`)
--   **Vite Dev Server (Frontend):** [http://localhost:5173](http://localhost:5173) (Atau sesuai variabel `VITE_PORT` di `.env` Anda)
+-   **Vite Dev Server (Frontend):** [http://localhost:5173](http://localhost:5173) (atau sesuai `VITE_PORT` di `.env`)
 -   **MySQL Database:** `localhost` dengan Port `3306`
 
 ---
 
 ## 🐳 Struktur Layanan Docker (Overview)
 
-File `compose.dev.yaml` Anda mengelola 4 layanan utama:
-
-1. **`web` (Nginx):** Server web yang meneruskan permintaan HTTP ke container PHP-FPM. Menggunakan port standar `80`.
-2. **`php-fpm`:** Container utama yang mengeksekusi kode PHP Laravel Anda. Sudah dilengkapi dengan **Xdebug** untuk keperluan _debugging_ dan _profiling_ kode.
-3. **`workspace`:** Container interaktif untuk kebutuhan pengembangan seperti menjalankan perintah `composer`, `npm`, `php artisan`, atau menjalankan server frontend **Vite** (Port `5173`).
-4. **`mysql`:** Database server menggunakan MySQL versi 8.0. Data disimpan secara persisten di dalam volume komputer Anda (`mysql_data`), sehingga data tidak akan hilang saat container dimatikan.
+1. **`web` (Nginx):** Meneruskan permintaan HTTP ke container PHP-FPM. Port `80`.
+2. **`php-fpm`:** Mengeksekusi kode PHP Laravel, dilengkapi **Xdebug** untuk _debugging_ dan _profiling_.
+3. **`workspace`:** Container interaktif untuk `npm`, Vite (Port `5173`), dan perintah pengembangan lainnya.
+4. **`mysql`:** MySQL 8.0. Data disimpan persisten di volume `mysql_data`.
 
 ---
 
 ## 🛑 Menghentikan dan Menjalankan Kembali Proyek
 
-Tergantung pada kebutuhan Anda, gunakan salah satu metode di bawah ini untuk mengelola status container:
-
-### 1. Menghentikan Sementara (Temporary Stop)
-
-Jika Anda selesai bekerja dan ingin menghentikan proyek tanpa menghapus container, jalankan perintah berikut:
+### 1. Menghentikan Sementara
 
 ```bash
 docker compose --file compose.dev.yaml stop
 ```
 
-_Perintah ini hanya menonaktifkan container. Semua konfigurasi dan status container terakhir tetap tersimpan._
+_Container hanya dinonaktifkan; konfigurasi dan data tetap tersimpan._
 
 ### 2. Jalankan Kembali (Resume)
-
-Untuk melanjutkan pekerjaan setelah proyek dihentikan dengan perintah `stop`, Anda cukup menjalankan perintah ini (tanpa perlu melakukan _build_ ulang):
 
 ```bash
 docker compose --file compose.dev.yaml up -d
 ```
 
-### 3. Hapus Total Container & Volume Database (`down -v`)
+_Tidak perlu mengulang Langkah 2–7._
 
-Jika Anda ingin membersihkan lingkungan pengembangan secara total, menghentikan proyek, sekaligus **menghapus semua data di dalam database (bersih total)**, jalankan perintah berikut:
+### 3. Hapus Total Container & Volume Database (`down -v`)
 
 ```bash
 docker compose --file compose.dev.yaml down -v
 ```
 
-_⚠️ **Peringatan:** Parameter `-v` akan menghapus volume `mysql_data`. Semua data dan tabel yang sudah Anda buat di MySQL akan hilang permanen._
+_⚠️ **Peringatan:** Parameter `-v` menghapus volume `mysql_data`. Semua data di MySQL akan hilang permanen._
+
+---
+
+## 🔍 Troubleshooting
+
+Cek status dan log container yang bermasalah:
+
+```bash
+docker compose --file compose.dev.yaml ps -a
+docker compose --file compose.dev.yaml logs <nama-layanan> --tail 30
+```
+
+| Gejala | Penyebab | Solusi |
+| --- | --- | --- |
+| **502 Bad Gateway** di browser | Container `php-fpm` mati | Cek `logs php-fpm`, biasanya karena `vendor/` belum ada (ulangi Langkah 4) |
+| Log `php-fpm`: `Failed opening required '/var/www/vendor/autoload.php'` | Composer belum diinstal | Jalankan Langkah 4, lalu `docker compose --file compose.dev.yaml up -d php-fpm` |
+| `mysql` berstatus **Restarting** | `DB_USERNAME=root` atau `DB_PASSWORD` kosong | Perbaiki `.env` (Langkah 3), lalu `down -v` dan ulangi dari Langkah 6 |
+| `Connection refused` saat migrate | MySQL belum selesai inisialisasi | Tunggu hingga log `mysql` menampilkan `ready for connections`, lalu ulangi `migrate` |
+| `Access denied for user` saat migrate | Password di `.env` berbeda dengan yang tersimpan di volume lama | `down -v`, lalu ulangi dari Langkah 6 |
+| **No application encryption key has been specified** | `APP_KEY` kosong saat container dibuat | Isi `APP_KEY` (Langkah 5), lalu `docker compose --file compose.dev.yaml up -d --force-recreate php-fpm` |
+| **Unsupported cipher or incorrect key length** | `APP_KEY` rusak (misalnya `key:generate` dijalankan dua kali) | Kosongkan `APP_KEY=` di `.env`, ulangi Langkah 5, lalu `up -d --force-recreate php-fpm` |
+| Error terkait Redis | `CACHE_STORE`, `SESSION_DRIVER`, atau `QUEUE_CONNECTION` masih `redis` | Ubah ke `file` / `sync` / `database` |
